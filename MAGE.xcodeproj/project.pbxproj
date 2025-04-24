@@ -2343,6 +2343,7 @@
 			isa = PBXGroup;
 			children = (
 				F786492D273BFF16002D3DC2 /* LayerTests.swift */,
+				F70E7B1927888531000BBC58 /* Categories */,
 			);
 			path = Layer;
 			sourceTree = "<group>";
@@ -2587,7 +2588,6 @@
 			isa = PBXGroup;
 			children = (
 				F7F264372806FDDE00758C5B /* Event */,
-				F70E7B1927888531000BBC58 /* Categories */,
 				F786492C273BFF02002D3DC2 /* Layer */,
 				F7BCAC1F263093E7006BE2A9 /* SDK */,
 				F7C641022581503B00C02335 /* Map */,
@@ -2934,7 +2934,7 @@
 					};
 					F7ED5D2320052161007BD768 = {
 						CreatedOnToolsVersion = 9.2;
-						DevelopmentTeam = ZL8G5D9G2H;
+						DevelopmentTeam = LX59QFLMSK;
 						LastSwiftMigration = 1150;
 						ProvisioningStyle = Automatic;
 						TestTargetID = F7A94D6518AD9CB000CB9EE0;
@@ -3983,7 +3983,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEFINES_MODULE = NO;
-				DEVELOPMENT_TEAM = ZL8G5D9G2H;
+				DEVELOPMENT_TEAM = LX59QFLMSK;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				HEADER_SEARCH_PATHS = (
@@ -4064,7 +4064,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = NO;
-				DEVELOPMENT_TEAM = ZL8G5D9G2H;
+				DEVELOPMENT_TEAM = LX59QFLMSK;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				INFOPLIST_FILE = MAGETests/Info.plist;
