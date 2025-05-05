@@ -90,19 +90,25 @@ static NSInteger TIME_INTERVAL_CELL_ROW = 1;
     [defaults synchronize];
 }
 
-- (void) fetchAttachmentsChnaged:(id) sender {
+- (void) fetchAttachmentsChanged:(id) sender {
     BOOL on = [sender isOn];
-    self.attachmentFetchEnabled = on;
-    NSArray *rows = [[NSArray alloc] initWithObjects:[NSIndexPath indexPathForRow:TIME_INTERVAL_CELL_ROW inSection:ATTACHMENT_FETCH_SECTION], nil];
-    if (on) {
-        [self.tableView insertRowsAtIndexPaths:rows withRowAnimation:UITableViewRowAnimationFade];
-    } else {
-        [self.tableView deleteRowsAtIndexPaths:rows withRowAnimation:UITableViewRowAnimationFade];
 
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:TIME_INTERVAL_CELL_ROW inSection:ATTACHMENT_FETCH_SECTION];
+
+    [self.tableView beginUpdates];
+    
+    if (on) {
+        self.attachmentFetchEnabled = YES; // update model BEFORE insertion
+        [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    } else {
+        [self.tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+        self.attachmentFetchEnabled = NO;  // update model AFTER deletion
     }
     
+    [self.tableView endUpdates];
+    
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setObject: on ? @"YES" : @"NO" forKey:@"attachmentFetchEnabled"];
+    [defaults setBool:on forKey:@"attachmentFetchEnabled"];
     [defaults synchronize];
 }
 
@@ -190,8 +196,8 @@ static NSInteger TIME_INTERVAL_CELL_ROW = 1;
                 toggle.onTintColor = self.scheme.colorScheme.primaryColorVariant;
                 cell.accessoryView = toggle;
         
-                [toggle setOn:self.observationFetchEnabled animated:NO];
-                [toggle addTarget:self action:@selector(fetchAttachmentsChnaged:) forControlEvents:UIControlEventValueChanged];
+                [toggle setOn:self.attachmentFetchEnabled animated:NO];
+                [toggle addTarget:self action:@selector(fetchAttachmentsChanged:) forControlEvents:UIControlEventValueChanged];
         
                 return cell;
             }
