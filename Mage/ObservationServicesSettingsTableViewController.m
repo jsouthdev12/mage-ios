@@ -116,22 +116,34 @@ static NSInteger TIME_INTERVAL_CELL_ROW = 1;
     [self setPreferenceDisplayLabel:label forPreference:prefValuesKey withKey:NULL];
 }
 
-- (void) setPreferenceDisplayLabel : (UILabel*) label forPreference: (NSString*) prefValuesKey withKey: (nullable NSString *) preferencesKey {
+- (void) setPreferenceDisplayLabel : (UILabel*) label
+                     forPreference : (NSString*) prefValuesKey
+                           withKey : (nullable NSString *) preferencesKey {
+
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     
     NSDictionary *frequencyDictionary = [defaults dictionaryForKey:prefValuesKey];
     NSArray *labels = [frequencyDictionary valueForKey:@"labels"];
     NSArray *values = [frequencyDictionary valueForKey:@"values"];
     
-    NSNumber *frequency = [defaults valueForKey:preferencesKey ? preferencesKey : [frequencyDictionary valueForKey:@"preferenceKey"]];
+    NSString *resolvedPreferencesKey = preferencesKey ?: [frequencyDictionary valueForKey:@"preferenceKey"];
     
+    NSNumber *frequency = [defaults valueForKey:resolvedPreferencesKey];
+    if (frequency == nil) {
+        frequency = @1800;
+    }
+
     for (int i = 0; i < values.count; i++) {
-        if ([frequency integerValue] == [[values objectAtIndex:i] integerValue]) {
-            [label setText:[labels objectAtIndex:i]];
+        NSInteger currentValue = [values[i] integerValue];
+        NSString *currentLabel = labels[i];
+
+        if ([frequency integerValue] == currentValue) {
+            [label setText:currentLabel];
             break;
         }
     }
 }
+
 
 #pragma mark - Table view data source
 
