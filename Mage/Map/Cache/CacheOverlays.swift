@@ -7,30 +7,30 @@
 //
 
 import Foundation
+import CoreData
 
-@objc protocol CacheOverlayListener: NSObjectProtocol {
-    @objc func cacheOverlaysUpdated(_ cacheOverlays: [CacheOverlay])
+protocol CacheOverlayListener: NSObjectProtocol {
+    func cacheOverlaysUpdated(_ cacheOverlays: [CacheOverlay]) async
 }
 
-// TODO: This should be an actor
-@objc class CacheOverlays: NSObject {
+actor CacheOverlays {
+    static let shared = CacheOverlays()
+    
     @Injected(\.layerRepository)
     var layerRepository: LayerRepository
     
-    static let shared = CacheOverlays()
+    private var overlays: [String: CacheOverlay] = [:]
+    private var overlayNames: [String] = []
+    private var listeners: [CacheOverlayListener] = []
+    private var processing: [String] = []
     
-    var overlays: [String: CacheOverlay] = [:]
-    var overlayNames: [String] = []
-    var listeners: [CacheOverlayListener] = []
-    var processing: [String] = []
-    
-    @objc static func getInstance() -> CacheOverlays {
+    static func getInstance() -> CacheOverlays {
         shared
     }
     
-    @objc func register(_ listener: CacheOverlayListener) async {
+    func register(_ listener: CacheOverlayListener) async {
         listeners.append(listener)
-        await listener.cacheOverlaysUpdated(getOverlays())
+        await listener.cacheOverlaysUpdated(await getOverlays())
     }
     
     func unregisterListener(_ listener: CacheOverlayListener) {
@@ -50,24 +50,20 @@ import Foundation
         await notifyListeners()
     }
     
-    func addCacheOverlayHelper(overlay: CacheOverlay) {
+    private func addCacheOverlayHelper(overlay: CacheOverlay) {
         let cacheName = overlay.name
+        
         if let existingOverlay = overlays[cacheName] {
-            // Set existing cache overlays to their current enabled state
             overlay.enabled = existingOverlay.enabled
-            // if a new version of an existing cache overlay was added
+
             if overlay.added {
-                if existingOverlay.replaced != nil {
-                    overlay.replaced = existingOverlay.replaced
-                } else {
-                    overlay.replaced = existingOverlay
-                }
+                overlay.replaced = existingOverlay.replaced ?? existingOverlay
             }
         } else {
             overlayNames.append(cacheName)
         }
         
-        overlays[cacheName] = overlay // !!! CRASHED HERE (Modifying SHARED Mutable state!)
+        overlays[cacheName] = overlay // TODO: !!! CRASHED HERE (Modifying SHARED Mutable state!)
     }
     
     func addCacheOverlay(overlay: CacheOverlay) async {
@@ -75,38 +71,37 @@ import Foundation
         await notifyListeners()
     }
     
-    @objc func notifyListeners() async {
+    func notifyListeners() async {
         await notifyListenersExceptCaller(caller: nil)
     }
     
-    @objc func notifyListenersExceptCaller(caller: (any CacheOverlayListener)?) async {
+    func notifyListenersExceptCaller(caller: CacheOverlayListener?) async {
+        let overlays = await getOverlays()
+        
         for listener in listeners {
-            if caller == nil || !listener.isEqual(caller) {
-                await listener.cacheOverlaysUpdated(getOverlays())
+            if caller == nil || listener !== caller {
+                await listener.cacheOverlaysUpdated(overlays)
             }
         }
     }
     
-    @objc func getOverlays() async -> [CacheOverlay] {
+    func getOverlays() async -> [CacheOverlay] {
         var overlaysInCurrentEvent: [CacheOverlay] = []
         
         for cacheOverlayName in overlayNames.sorted() {
-            let cacheOverlay = overlays[cacheOverlayName]
-            if let cacheOverlay = cacheOverlay as? GeoPackageCacheOverlay,
-               let layerId = cacheOverlay.layerId
-            {
-                // check if this layer is in the event
-                @Injected(\.nsManagedObjectContext)
-                var context: NSManagedObjectContext?
-                if let layerIdInt = Int(layerId),
-                   let currentEventId = Server.currentEventId()
-                {
-                    let count = await layerRepository.count(eventId: currentEventId, layerId: layerIdInt)
-                    if count != 0 {
-                        overlaysInCurrentEvent.append(cacheOverlay)
-                    }
+            guard let cacheOverlay = overlays[cacheOverlayName] else { continue }
+            
+            if let geopkg = cacheOverlay as? GeoPackageCacheOverlay,
+               let layerId = geopkg.layerId,
+               let layerIdInt = Int(layerId),
+               let currentEventId = Server.currentEventId() {
+                let count = await layerRepository.count(eventId: currentEventId, layerId: layerIdInt)
+                
+                if count != 0 {
+                    overlaysInCurrentEvent.append(geopkg)
                 }
-            } else if let cacheOverlay = cacheOverlay {
+                
+            } else {
                 overlaysInCurrentEvent.append(cacheOverlay)
             }
         }
@@ -122,12 +117,12 @@ import Foundation
         overlays[overlayNames[index]]
     }
     
-    @objc func getByCacheName(_ cacheName: String?) -> CacheOverlay? {
+    func getByCacheName(_ cacheName: String?) -> CacheOverlay? {
         guard let cacheName = cacheName else { return nil }
         return overlays[cacheName]
     }
     
-    @objc func removeCacheOverlay(overlay: CacheOverlay) async {
+    func removeCacheOverlay(overlay: CacheOverlay) async {
         await remove(byCacheName: overlay.cacheName)
     }
     
@@ -152,7 +147,7 @@ import Foundation
         await notifyListeners()
     }
     
-    @objc func getProcessing() -> [String] {
+    func getProcessing() -> [String] {
         processing
     }
     

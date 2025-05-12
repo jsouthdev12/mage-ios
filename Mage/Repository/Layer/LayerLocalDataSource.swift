@@ -21,130 +21,158 @@ extension InjectedValues {
 
 protocol LayerLocalDataSource: Actor {
     func createLoadedXYZLayer(name: String) async -> Layer?
-    func markRemoteLayerNotDownloaded(remoteId: NSNumber)
-    func markRemoteLayerLoaded(remoteId: NSNumber)
+    func markRemoteLayerNotDownloaded(remoteId: NSNumber) async
+    func markRemoteLayerLoaded(remoteId: NSNumber) async
     func createGeoPackageLayer(name: String) async -> Layer?
-    func removeOutdatedOfflineMapArchives()
-    func count(eventId: NSNumber, layerId: Int) -> Int
+    func removeOutdatedOfflineMapArchives() async
+    func count(eventId: NSNumber, layerId: Int) async -> Int
 }
 
 actor LayerLocalCoreDataDataSource: LayerLocalDataSource {
     @Injected(\.nsManagedObjectContext)
     var context: NSManagedObjectContext?
     
-    func count(eventId: NSNumber, layerId: Int) -> Int {
-        let count = try? context?.countOfObjects(
-            Layer.self,
-            predicate: NSPredicate(
-                format: "eventId == %@ AND remoteId == %@", eventId, NSNumber(value:layerId)
-            )
-        )
+    func count(eventId: NSNumber, layerId: Int) async -> Int {
+        guard let context = self.context else { return 0 }
+        let layerIdNumber = NSNumber(value: layerId)
         
-        return count ?? 0
+        return await context.perform {
+            do {
+                return try context.countOfObjects(
+                    Layer.self,
+                    predicate: NSPredicate(
+                        format: "eventId == %@ AND remoteId == %@",
+                        eventId,
+                        layerIdNumber
+                    )
+                ) ?? 0
+            } catch {
+                NSLog("Count error: \(error)")
+                return 0
+            }
+        }
     }
     
     func createLoadedXYZLayer(name: String) async -> Layer? {
-        if let context = context {
-            return await context.perform {
-                do {
-                    let predicate = NSPredicate(format: "eventId == -1 AND (type == %@ OR type == %@) AND name == %@", argumentArray: ["GeoPackage", "Local_XYZ", name])
-                    
-                    let l = try context.fetchFirst(Layer.self, sortBy: [NSSortDescriptor(key: "eventId", ascending: true)], predicate: predicate)
-                    if l == nil {
-                        let l = Layer(context: context)
-                        l.name = name
-                        l.loaded = NSNumber(floatLiteral: Layer.EXTERNAL_LAYER_LOADED)
-                        l.type = "Local_XYZ"
-                        l.eventId = -1
-                        try context.obtainPermanentIDs(for: [l])
-                        try context.save()
-                        return l
-                    }
-                    return l
-                } catch {
-                    NSLog("Exception fetching and saving \(error)")
+        guard let context = self.context else { return nil }
+        return await context.perform {
+            do {
+                let predicate = NSPredicate(
+                    format: "eventId == -1 AND (type == %@ OR type == %@) AND name == %@",
+                    "GeoPackage", "Local_XYZ", name
+                )
+                let existing = try context.fetchFirst(
+                    Layer.self,
+                    sortBy: [NSSortDescriptor(key: "eventId", ascending: true)],
+                    predicate: predicate
+                )
+                if let existing = existing {
+                    return existing
                 }
+
+                let newLayer = Layer(context: context)
+                newLayer.name = name
+                newLayer.loaded = NSNumber(floatLiteral: Layer.EXTERNAL_LAYER_LOADED)
+                newLayer.type = "Local_XYZ"
+                newLayer.eventId = -1
+                try context.obtainPermanentIDs(for: [newLayer])
+                try context.save()
+                return newLayer
+            } catch {
+                NSLog("Error creating XYZ layer: \(error)")
                 return nil
             }
         }
-        return nil
     }
     
-    func markRemoteLayerNotDownloaded(remoteId: NSNumber) {
-        if let context = context {
-            context.perform {
-                do {
-                    let layers: [Layer] = try context.fetchObjects(Layer.self, predicate: NSPredicate(format: "remoteId == %@", argumentArray: [remoteId])) ?? []
-                    for layer in layers {
-                        layer.loaded = NSNumber(floatLiteral: Layer.OFFLINE_LAYER_NOT_DOWNLOADED)
-                        layer.downloading = false
-                    }
-                    try context.save()
-                } catch {
-                    NSLog("Exception setting layer \(remoteId) to not downloaded \(error)")
+    func markRemoteLayerNotDownloaded(remoteId: NSNumber) async {
+        guard let context = self.context else { return }
+        await context.perform {
+            do {
+                let layers: [Layer] = try context.fetchObjects(
+                    Layer.self,
+                    predicate: NSPredicate(format: "remoteId == %@", remoteId)
+                ) ?? []
+                for layer in layers {
+                    layer.loaded = NSNumber(floatLiteral: Layer.OFFLINE_LAYER_NOT_DOWNLOADED)
+                    layer.downloading = false
                 }
+                try context.save()
+            } catch {
+                NSLog("Error marking not downloaded: \(error)")
             }
         }
     }
     
-    func markRemoteLayerLoaded(remoteId: NSNumber) {
-        if let context = context {
-            context.perform {
-                do {
-                    let layers: [Layer] = try context.fetchObjects(Layer.self, predicate: NSPredicate(format: "remoteId == %@", argumentArray: [remoteId])) ?? []
-                    for layer in layers {
-                        layer.loaded = NSNumber(floatLiteral: Layer.OFFLINE_LAYER_LOADED)
-                        layer.downloading = false
-                    }
-                    try context.save()
-                } catch {
-                    NSLog("Exception setting layer \(remoteId) to loaded \(error)")
+    func markRemoteLayerLoaded(remoteId: NSNumber) async {
+        guard let context = self.context else { return }
+        await context.perform {
+            do {
+                let layers: [Layer] = try context.fetchObjects(
+                    Layer.self,
+                    predicate: NSPredicate(format: "remoteId == %@", remoteId)
+                ) ?? []
+                for layer in layers {
+                    layer.loaded = NSNumber(floatLiteral: Layer.OFFLINE_LAYER_LOADED)
+                    layer.downloading = false
                 }
+                try context.save()
+            } catch {
+                NSLog("Error marking loaded: \(error)")
             }
         }
     }
     
     func createGeoPackageLayer(name: String) async -> Layer? {
-        if let context = context {
-            return await context.perform {
-                do {
-                    let l = Layer(context: context)
-                    l.name = name
-                    l.loaded = NSNumber(floatLiteral: Layer.EXTERNAL_LAYER_LOADED)
-                    l.type = "GeoPackage"
-                    l.eventId = -1
-                    try context.obtainPermanentIDs(for: [l])
-                    try context.save()
-                    return l
-                } catch {
-                    NSLog("Error saving local GeoPackage \(error)")
-                }
+        guard let context = self.context else { return nil }
+        return await context.perform {
+            do {
+                let layer = Layer(context: context)
+                layer.name = name
+                layer.loaded = NSNumber(floatLiteral: Layer.EXTERNAL_LAYER_LOADED)
+                layer.type = "GeoPackage"
+                layer.eventId = -1
+                try context.obtainPermanentIDs(for: [layer])
+                try context.save()
+                return layer
+            } catch {
+                NSLog("Error creating GeoPackage layer: \(error)")
                 return nil
             }
         }
-        return nil
     }
+
     
-    func removeOutdatedOfflineMapArchives() {
-        if let context = context {
-            context.perform {
-                do {
-                    let layers: [Layer] = try context.fetchObjects(Layer.self, predicate: NSPredicate(format: "eventId == -1 AND (type == %@ OR type == %@)", argumentArray: ["GeoPackage", "Local_XYZ"])) ?? []
-                    for layer in layers {
-                        let overlay = CacheOverlays.getInstance().getByCacheName(layer.name)
-                        
-                        if (overlay == nil) {
-                            context.delete(layer)
-                        } else if let overlay = overlay as? GeoPackageCacheOverlay {
-                            if !FileManager.default.fileExists(atPath: overlay.filePath) {
-                                context.delete(layer)
-                            }
-                        }
-                    }
-                    try context.save()
-                } catch {
-                    NSLog("Exception removing layer \(error)")
+    func removeOutdatedOfflineMapArchives() async {
+        guard let context = self.context else { return }
+        
+        let layers: [Layer]? = await context.perform {
+            try? context.fetchObjects(
+                Layer.self,
+                predicate: NSPredicate(
+                    format: "eventId == -1 AND (type == %@ OR type == %@)",
+                    argumentArray: ["GeoPackage", "Local_XYZ"]
+                )
+            )
+        }
+        
+        guard let layers else { return }
+        
+        for layer in layers {
+            let overlay = await CacheOverlays.shared.getByCacheName(layer.name)
+            
+            if overlay == nil || (overlay is GeoPackageCacheOverlay && !FileManager.default.fileExists(atPath: (overlay as! GeoPackageCacheOverlay).filePath)) {
+                await context.perform {
+                    context.delete(layer)
                 }
+            }
+        }
+        
+        await context.perform {
+            do {
+                try context.save()
+            } catch {
+                NSLog("Error saving after deleting outdated layers: \(error)")
             }
         }
     }

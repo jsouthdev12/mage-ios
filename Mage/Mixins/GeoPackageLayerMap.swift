@@ -45,27 +45,38 @@ class GeoPackageLayerMapMixin: NSObject, MapMixin {
         geoPackage = GeoPackage(mapView: mapView)
         
         Task {
-            await CacheOverlays.getInstance().register(self)
+            await CacheOverlays.shared.register(self)
         }
-        geopackageImportedObserver = NotificationCenter.default.addObserver(forName: .GeoPackageImported, object: nil, queue: .main) { [weak self] notification in
-            self?.updateGeoPackageLayers()
+        
+        geopackageImportedObserver = NotificationCenter.default.addObserver(
+            forName: .GeoPackageImported,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task {
+                await self?.updateGeoPackageLayers()
+            }
         }
-        updateGeoPackageLayers()
+        
+        Task {
+            await updateGeoPackageLayers()
+        }
     }
     
     func cleanupMixin() {
-        CacheOverlays.getInstance().unregisterListener(self)
-        if let geopackageImportedObserver = geopackageImportedObserver {
-            NotificationCenter.default.removeObserver(geopackageImportedObserver)
+        Task {
+            await CacheOverlays.shared.unregisterListener(self)
+        }
+        
+        if let observer = geopackageImportedObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
         geopackageImportedObserver = nil
     }
     
-    func updateGeoPackageLayers() {
-        Task {
-            await geoPackage?.updateCacheOverlaysSynchronized(CacheOverlays.getInstance().getOverlays())
-        }
-        
+    func updateGeoPackageLayers() async {
+        let overlays = await CacheOverlays.shared.getOverlays()
+        await geoPackage?.updateCacheOverlaysSynchronized(overlays)
     }
     
     func itemKeys(
@@ -92,8 +103,8 @@ class GeoPackageLayerMapMixin: NSObject, MapMixin {
 }
 
 extension GeoPackageLayerMapMixin : CacheOverlayListener {
-    func cacheOverlaysUpdated(_ cacheOverlays: [CacheOverlay]) {
-        MageLogger.misc.debug("XXX got notified")
-        updateGeoPackageLayers()
+    func cacheOverlaysUpdated(_ cacheOverlays: [CacheOverlay]) async {
+        MageLogger.misc.debug("XXX got notified - GeoPackageLayerMapMixin:cacheOverlaysUpdated")
+        await updateGeoPackageLayers()
     }
 }

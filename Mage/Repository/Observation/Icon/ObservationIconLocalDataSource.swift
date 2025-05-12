@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UIKit
 
 private struct ObservationIconLocalDataSourceProviderKey: InjectionKey {
     static var currentValue: ObservationIconLocalDataSource = ObservationIconCoreDataDataSource()
