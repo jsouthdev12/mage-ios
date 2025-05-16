@@ -8,6 +8,23 @@
 
 import CoreGraphics
 import UIKit
+import TipKit
+
+struct ServerURLTip: Tip {
+
+    var title: Text {
+        Text("Getting Started")
+            .foregroundStyle(Color.mint)
+    }
+
+    var message: Text? {
+        Text("To begin using MAGE, you need to paste or type your MAGE server's URL here.")
+    }
+
+    var image: Image? {
+        Image(systemName: "info")
+    }
+}
 
 @objc public protocol ServerURLDelegate {
     @objc func setServerURL(url: URL)
@@ -21,6 +38,10 @@ class ServerURLController: UIViewController {
     var error: String?
     var additionalErrorInfo: Dictionary<String, Any>?
     
+    private var serverURLTip: ServerURLTip = ServerURLTip()
+    private var tipObservationTask: Task<Void, Never>?
+    private weak var tipView: TipUIView?
+
     lazy var progressView: MDCProgressView = {
         let progressView = MDCProgressView(forAutoLayout: ())
         progressView.mode = MDCProgressViewMode.indeterminate
@@ -205,6 +226,39 @@ class ServerURLController: UIViewController {
             cancelButton.isEnabled = false
             cancelButton.isHidden = true
         }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        tipObservationTask = tipObservationTask ?? Task { @MainActor in
+            for await shouldDisplay in serverURLTip.shouldDisplayUpdates {
+                if shouldDisplay {
+                    let tipHostingView = TipUIView(serverURLTip)
+                    tipHostingView.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    view.addSubview(tipHostingView)
+                    
+                    view.addConstraints([
+                        tipHostingView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                        tipHostingView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20.0),
+                        tipHostingView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20.0)
+                    ])
+                    
+                    tipView = tipHostingView
+                }
+                else {
+                    tipView?.removeFromSuperview()
+                    tipView = nil
+                }
+            }
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        tipObservationTask?.cancel()
+        tipObservationTask = nil
     }
     
     @objc public func showError(error: String, userInfo:Dictionary<String, Any>? = nil) {
