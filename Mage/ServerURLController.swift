@@ -204,6 +204,11 @@ class ServerURLController: UIViewController {
         view.addSubview(errorInfoLink)
         
         applyTheme(withContainerScheme: scheme)
+        
+        Task {
+            try? Tips.configure()
+//            try? Tips.resetDatastore()  // For debugging
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -234,20 +239,23 @@ class ServerURLController: UIViewController {
         tipObservationTask = tipObservationTask ?? Task { @MainActor in
             for await shouldDisplay in serverURLTip.shouldDisplayUpdates {
                 if shouldDisplay {
-                    let tipHostingView = TipUIView(serverURLTip)
-                    tipHostingView.translatesAutoresizingMaskIntoConstraints = false
+                    let serverUrlTipView = TipUIView(serverURLTip)
                     
-                    view.addSubview(tipHostingView)
+                    serverUrlTipView.translatesAutoresizingMaskIntoConstraints = false
+                    serverUrlTipView.backgroundColor = .lightGray.withAlphaComponent(0.6)
+                    
+                    view.addSubview(serverUrlTipView)
                     
                     view.addConstraints([
-                        tipHostingView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-                        tipHostingView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20.0),
-                        tipHostingView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20.0)
+                        serverUrlTipView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                        serverUrlTipView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 35.0),
+                        serverUrlTipView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -35.0)
                     ])
                     
-                    tipView = tipHostingView
+                    tipView = serverUrlTipView
                 }
                 else {
+                    try? Tips.resetDatastore()
                     tipView?.removeFromSuperview()
                     tipView = nil
                 }
