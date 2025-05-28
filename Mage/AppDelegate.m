@@ -65,6 +65,8 @@
         [self startMageApp];
     }
 
+    [TipKitWrapper configureTipKit];
+    [TipKitWrapper resetTips];
 	return YES;
 }
 

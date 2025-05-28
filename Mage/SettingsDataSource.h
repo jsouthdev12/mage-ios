@@ -11,7 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef NS_ENUM(NSUInteger, SettingType) {
+typedef NS_ENUM(NSUInteger, kSettingType) {
     kConnection,
     kLocationServices,
     kObservationServices,
@@ -35,7 +35,7 @@ typedef NS_ENUM(NSUInteger, SettingType) {
 };
 
 @protocol SettingsDelegate
-- (void) settingTapped:(SettingType) setting info:(id) info;
+- (void) settingTapped:(kSettingType) setting info:(id) info;
 @end
 
 @interface SettingsDataSource : NSObject<UITableViewDataSource, UITableViewDelegate>

@@ -8,23 +8,6 @@
 
 import CoreGraphics
 import UIKit
-import TipKit
-
-struct ServerURLTip: Tip {
-
-    var title: Text {
-        Text("Getting Started")
-            .foregroundStyle(Color.mint)
-    }
-
-    var message: Text? {
-        Text("To begin using MAGE, you need to paste or type your MAGE server's URL here.")
-    }
-
-    var image: Image? {
-        Image(systemName: "info")
-    }
-}
 
 @objc public protocol ServerURLDelegate {
     @objc func setServerURL(url: URL)
@@ -38,10 +21,6 @@ class ServerURLController: UIViewController {
     var error: String?
     var additionalErrorInfo: Dictionary<String, Any>?
     
-    private var serverURLTip: ServerURLTip = ServerURLTip()
-    private var tipObservationTask: Task<Void, Never>?
-    private weak var tipView: TipUIView?
-
     lazy var progressView: MDCProgressView = {
         let progressView = MDCProgressView(forAutoLayout: ())
         progressView.mode = MDCProgressViewMode.indeterminate
@@ -204,11 +183,6 @@ class ServerURLController: UIViewController {
         view.addSubview(errorInfoLink)
         
         applyTheme(withContainerScheme: scheme)
-        
-        Task {
-            try? Tips.configure()
-//            try? Tips.resetDatastore()  // For debugging
-        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -235,38 +209,12 @@ class ServerURLController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
-        tipObservationTask = tipObservationTask ?? Task { @MainActor in
-            for await shouldDisplay in serverURLTip.shouldDisplayUpdates {
-                if shouldDisplay {
-                    let serverUrlTipView = TipUIView(serverURLTip)
-                    
-                    serverUrlTipView.translatesAutoresizingMaskIntoConstraints = false
-                    serverUrlTipView.backgroundColor = .lightGray.withAlphaComponent(0.6)
-                    
-                    view.addSubview(serverUrlTipView)
-                    
-                    view.addConstraints([
-                        serverUrlTipView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-                        serverUrlTipView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 35.0),
-                        serverUrlTipView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -35.0)
-                    ])
-                    
-                    tipView = serverUrlTipView
-                }
-                else {
-                    try? Tips.resetDatastore()
-                    tipView?.removeFromSuperview()
-                    tipView = nil
-                }
-            }
-        }
+
+        TipKitWrapper.showTip(type: 99, on: self, sourceView: serverURL)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        tipObservationTask?.cancel()
-        tipObservationTask = nil
     }
     
     @objc public func showError(error: String, userInfo:Dictionary<String, Any>? = nil) {

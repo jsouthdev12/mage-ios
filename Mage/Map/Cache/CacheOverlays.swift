@@ -12,7 +12,6 @@ import Foundation
     @objc func cacheOverlaysUpdated(_ cacheOverlays: [CacheOverlay])
 }
 
-// TODO: This should be an actor
 actor CacheOverlays: NSObject {
     @Injected(\.layerRepository)
     var layerRepository: LayerRepository

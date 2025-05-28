@@ -158,6 +158,8 @@
 		843A5E7D2D8DD42800E95F4B /* apiSuccessNoAuthStrategies.json in Resources */ = {isa = PBXBuildFile; fileRef = F7FED9DC275692850000915B /* apiSuccessNoAuthStrategies.json */; };
 		843A5E7E2D8DD42800E95F4B /* polygonObservation.json in Resources */ = {isa = PBXBuildFile; fileRef = F7CDD7122601194600F3294C /* polygonObservation.json */; };
 		843A5E7F2D8DD42800E95F4B /* observationNoAttachmentResponse.json in Resources */ = {isa = PBXBuildFile; fileRef = F7FC68192CD3E4E80022BAF1 /* observationNoAttachmentResponse.json */; };
+		8467DF912DDD0ACF00F72C6F /* TipKitWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8467DF902DDD0ACF00F72C6F /* TipKitWrapper.swift */; };
+		8467DF932DE4F8DA00F72C6F /* SettingType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8467DF922DE4F8DA00F72C6F /* SettingType.swift */; };
 		846D0C002D834440009C68CB /* AuthenticationCoordinatorSpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 846D0BFF2D834440009C68CB /* AuthenticationCoordinatorSpy.swift */; };
 		846D0C022D834519009C68CB /* UserDefaults+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 846D0C012D834519009C68CB /* UserDefaults+Extensions.swift */; };
 		846D0C052D838927009C68CB /* MockAuthenticationCoordinatorDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 846D0C042D838927009C68CB /* MockAuthenticationCoordinatorDelegate.swift */; };
@@ -1075,6 +1077,8 @@
 		665E44101FEA86D8CD6AD241 /* Pods-MAGEGeoPackageTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MAGEGeoPackageTests.release.xcconfig"; path = "Pods/Target Support Files/Pods-MAGEGeoPackageTests/Pods-MAGEGeoPackageTests.release.xcconfig"; sourceTree = "<group>"; };
 		7D0F874A2AA795CD009664E5 /* test_image_attachment.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = test_image_attachment.png; sourceTree = "<group>"; };
 		842210AB2D8A06AE008BE357 /* AuthenticationCoordinator+Offline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AuthenticationCoordinator+Offline.swift"; sourceTree = "<group>"; };
+		8467DF902DDD0ACF00F72C6F /* TipKitWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipKitWrapper.swift; sourceTree = "<group>"; };
+		8467DF922DE4F8DA00F72C6F /* SettingType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingType.swift; sourceTree = "<group>"; };
 		846D0BFF2D834440009C68CB /* AuthenticationCoordinatorSpy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationCoordinatorSpy.swift; sourceTree = "<group>"; };
 		846D0C012D834519009C68CB /* UserDefaults+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Extensions.swift"; sourceTree = "<group>"; };
 		846D0C032D834623009C68CB /* AuthenticationCoordinator+Testing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AuthenticationCoordinator+Testing.h"; sourceTree = "<group>"; };
@@ -2330,6 +2334,7 @@
 				2F763C8E1DD10D2900780250 /* SettingsViewController.h */,
 				2F763C8F1DD10D2900780250 /* SettingsViewController.m */,
 				F75BF90C272762BC00D913D2 /* ThemeTableViewController.swift */,
+				8467DF922DE4F8DA00F72C6F /* SettingType.swift */,
 				F72088A71E73600100EBFF81 /* TimeSettingsTableViewController.h */,
 				F72088A81E73600100EBFF81 /* TimeSettingsTableViewController.m */,
 				F721B3641913E61B00F1CAB4 /* ValuePickerTableViewController.h */,
@@ -3547,6 +3552,7 @@
 				F7B1C473267404A80005FCE4 /* ViewLoader */,
 				2F389C931DCD24E200F05C95 /* Views */,
 				F734C1EA2BC847C300B2E8C8 /* Notifications.swift */,
+				8467DF902DDD0ACF00F72C6F /* TipKitWrapper.swift */,
 			);
 			path = Mage;
 			sourceTree = "<group>";
@@ -5217,6 +5223,7 @@
 				F72D43102694B60300F9AC3B /* GPSLocation+CoreDataProperties.swift in Sources */,
 				F7098F28249401E500313703 /* FeedItemTableViewCell.swift in Sources */,
 				F72D42F12694B60300F9AC3B /* DataConnectionUtilities.swift in Sources */,
+				8467DF912DDD0ACF00F72C6F /* TipKitWrapper.swift in Sources */,
 				2F142891199AB9A400C64A98 /* UINextField.m in Sources */,
 				F7225F5E2C5C1B9000B7D935 /* ObservationLocationFieldViewModel.swift in Sources */,
 				F7154AC7260CE165002C8617 /* NavigationOverlay.swift in Sources */,
@@ -5332,6 +5339,7 @@
 				F77C21A6254C6E7000D9257F /* HexColor.swift in Sources */,
 				F72D43152694B60300F9AC3B /* Form.swift in Sources */,
 				F73565052C668DB200466813 /* UserObservationList.swift in Sources */,
+				8467DF932DE4F8DA00F72C6F /* SettingType.swift in Sources */,
 				F72D430C2694B60300F9AC3B /* ImageryLayer+CoreDataProperties.swift in Sources */,
 				F714D5F51A5C8CAA00B096A7 /* Recording.m in Sources */,
 				F7B5772C245CABE600879C9C /* ExpandableCard.swift in Sources */,

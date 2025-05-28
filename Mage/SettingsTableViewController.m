@@ -22,6 +22,7 @@
 #import "DataSynchronizationSettingsTableViewController.h"
 #import "LocationServicesSettingsTableViewController.h"
 #import "ObservationServicesSettingsTableViewController.h"
+#import "UITableViewCell+Setting.h"
 
 @interface SettingsTableViewController ()<AuthenticationDelegate, SettingsDelegate, EventInformationDelegate, UISplitViewControllerDelegate, CLLocationManagerDelegate>
 @property (strong, nonatomic) CLLocationManager *locationManager;
@@ -100,6 +101,25 @@
     [self.tableView reloadData];
 }
 
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+
+    // Loop through visible rows and show a tip for known types
+    NSArray<NSIndexPath *> *visibleRows = [self.tableView indexPathsForVisibleRows];
+    for (NSIndexPath *indexPath in visibleRows) {
+        UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+        if (cell && cell.type) {
+            NSInteger type = [cell.type integerValue];
+
+            // Only show tips for selected types
+            if (type == kLocationServices || type == kChangePassword || type == kMediaPhoto) {
+                [TipKitWrapper showTipWithType:type on:self sourceView:cell];
+                break; // only show one tip at a time
+            }
+        }
+    }
+}
+
 - (void)viewDidDisappear:(BOOL)animated {
     self.locationManager = nil;
     
@@ -118,7 +138,7 @@
 
 # pragma mark - Settings delegate
 
-- (void)settingTapped:(SettingType)setting info:(nonnull id)info {
+- (void)settingTapped:(kSettingType)setting info:(nonnull id)info {
     switch (setting) {
         case kConnection: {
             [self onLogin];

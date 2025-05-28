@@ -165,7 +165,7 @@
 
 # pragma mark - Settings delegate
 
-- (void)settingTapped:(SettingType)setting info:(nonnull id)info {
+- (void)settingTapped:(kSettingType)setting info:(nonnull id)info {
     switch (setting) {
         case kConnection: {
             [self onLogin];
