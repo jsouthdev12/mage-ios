@@ -588,13 +588,93 @@ enum ObservationState: Int, CustomStringConvertible {
         return ObservationState.Active;
     }
     
+    static var fetchedUsers: [String:User] = [:]
+    
     @discardableResult
     @objc public static func create(feature: [AnyHashable : Any], eventForms: [NSNumber: [[String: AnyHashable]]]? = nil, context:NSManagedObjectContext) -> Observation? {
         var newObservation: Observation? = nil;
         let remoteId = Observation.idFromJson(json: feature);
         let state = Observation.stateFromJson(json: feature);
         
-        if let remoteId = remoteId, let existingObservation = Observation.mr_findFirst(byAttribute: ObservationKey.remoteId.key, withValue: remoteId, in: context) {
+        if state != .Archive {
+            // if the observation doesn't exist, insert it
+            if let observation = Observation.mr_createEntity(in: context) {
+                observation.populate(json: feature, eventForms: eventForms);
+                if let userId = observation.userId {
+                    // use a Temp user hash table instead of fetching everytime
+                    if let fetchedUser = fetchedUsers[userId], let userInContext = context.object(with: fetchedUser.objectID) as? User {
+                        observation.user = userInContext
+                        if fetchedUser.lastUpdated == nil {
+                            // new user, go fetch
+                            let manager = MageSessionManager.shared();
+                            
+                            let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
+                                MageLogger.misc.debug("Fetched user \(userId) successfully.")
+                            } failure: { task, error in
+                                MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
+                            }
+                            manager?.addTask(fetchUserTask)
+                        }
+                    } else if let user = User.mr_findFirst(byAttribute: UserKey.remoteId.key, withValue: userId, in: context) {
+                        fetchedUsers[userId] = user
+                        observation.user = user
+                        // this could happen if we pulled the teams and know this user belongs on a team
+                        // but did not pull the user information because the bulk user pull failed
+                        if user.lastUpdated == nil {
+                            // new user, go fetch
+                            let manager = MageSessionManager.shared();
+                            
+                            let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
+                                MageLogger.misc.debug("Fetched user \(userId) successfully.")
+                            } failure: { task, error in
+                                MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
+                            }
+                            manager?.addTask(fetchUserTask)
+                        }
+                    } else {
+                        // new user, go fetch
+                        let manager = MageSessionManager.shared();
+                        
+                        let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
+                            MageLogger.misc.debug("Fetched user \(userId) successfully.")
+                            observation.user = User.mr_findFirst(byAttribute: ObservationKey.remoteId.key, withValue: userId, in: context)
+                        } failure: { task, error in
+                            MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
+                        }
+                        manager?.addTask(fetchUserTask)
+                    }
+                }
+                
+                if let importantJson = feature[ObservationKey.important.key] as? [String : Any] {
+                    if let important = ObservationImportant.important(json: importantJson, context: context) {
+                        important.observation = observation;
+                        observation.observationImportant = important;
+                    }
+                }
+                
+                if let favoriteUserIds = feature[ObservationKey.favoriteUserIds.key] as? [String] {
+                    for favoriteUserId in favoriteUserIds {
+                        if let favorite = ObservationFavorite.favorite(userId: favoriteUserId, context: context) {
+                            favorite.observation = observation;
+                            observation.addToFavorites(favorite);
+                        }
+                    }
+                }
+                
+                if let attachmentsJson = feature[ObservationKey.attachments.key] as? [[AnyHashable : Any]] {
+                    for (index, attachmentJson) in attachmentsJson.enumerated() {
+                        if let attachment = Attachment.attachment(json: attachmentJson, order: index, context: context) {
+                            observation.addToAttachments(attachment);
+                        }
+                    }
+                }
+
+                observation.createObservationLocations(context: context)
+
+                newObservation = observation;
+            }
+        }
+        else if let remoteId = remoteId, let existingObservation = Observation.mr_findFirst(byAttribute: ObservationKey.remoteId.key, withValue: remoteId, in: context) {
             // if the observation is archived, delete it
             if state == .Archive {
                 MageLogger.misc.debug("Deleting archived observation with id: \(String(describing: remoteId))")
@@ -611,7 +691,23 @@ enum ObservationState: Int, CustomStringConvertible {
                 
                 existingObservation.populate(json: feature, eventForms: eventForms);
                 if let userId = existingObservation.userId {
+                    // use a Temp user hash table instead of fetching everytime
+                    if let fetchedUser = fetchedUsers[userId], let userInContext = context.object(with: fetchedUser.objectID) as? User {
+                        existingObservation.user = fetchedUser
+                        if fetchedUser.lastUpdated == nil {
+                            // new user, go fetch
+                            let manager = MageSessionManager.shared();
+                            
+                            let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
+                                MageLogger.misc.debug("Fetched user \(userId) successfully.")
+                            } failure: { task, error in
+                                MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
+                            }
+                            manager?.addTask(fetchUserTask)
+                        }
+                    }
                     if let user = User.mr_findFirst(byAttribute: ObservationKey.remoteId.key, withValue: userId, in: context) {
+                        fetchedUsers[userId] = user
                         existingObservation.user = user
                         if user.lastUpdated == nil {
                             // new user, go fetch
@@ -709,70 +805,6 @@ enum ObservationState: Int, CustomStringConvertible {
 
                 existingObservation.createObservationLocations(context: context)
             }
-        } else {
-            if state != .Archive {
-                // if the observation doesn't exist, insert it
-                if let observation = Observation.mr_createEntity(in: context) {
-                    observation.populate(json: feature, eventForms: eventForms);
-                    if let userId = observation.userId {
-                        if let user = User.mr_findFirst(byAttribute: UserKey.remoteId.key, withValue: userId, in: context) {
-                            observation.user = user
-                            // this could happen if we pulled the teams and know this user belongs on a team
-                            // but did not pull the user information because the bulk user pull failed
-                            if user.lastUpdated == nil {
-                                // new user, go fetch
-                                let manager = MageSessionManager.shared();
-                                
-                                let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
-                                    MageLogger.misc.debug("Fetched user \(userId) successfully.")
-                                } failure: { task, error in
-                                    MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
-                                }
-                                manager?.addTask(fetchUserTask)
-                            }
-                        } else {
-                            // new user, go fetch
-                            let manager = MageSessionManager.shared();
-                            
-                            let fetchUserTask = User.operationToFetchUser(userId: userId) { task, response in
-                                MageLogger.misc.debug("Fetched user \(userId) successfully.")
-                                observation.user = User.mr_findFirst(byAttribute: ObservationKey.remoteId.key, withValue: userId, in: context)
-                            } failure: { task, error in
-                                MageLogger.misc.error("Failed to fetch user \(userId) error \(error)")
-                            }
-                            manager?.addTask(fetchUserTask)
-                        }
-                    }
-                    
-                    if let importantJson = feature[ObservationKey.important.key] as? [String : Any] {
-                        if let important = ObservationImportant.important(json: importantJson, context: context) {
-                            important.observation = observation;
-                            observation.observationImportant = important;
-                        }
-                    }
-                    
-                    if let favoriteUserIds = feature[ObservationKey.favoriteUserIds.key] as? [String] {
-                        for favoriteUserId in favoriteUserIds {
-                            if let favorite = ObservationFavorite.favorite(userId: favoriteUserId, context: context) {
-                                favorite.observation = observation;
-                                observation.addToFavorites(favorite);
-                            }
-                        }
-                    }
-                    
-                    if let attachmentsJson = feature[ObservationKey.attachments.key] as? [[AnyHashable : Any]] {
-                        for (index, attachmentJson) in attachmentsJson.enumerated() {
-                            if let attachment = Attachment.attachment(json: attachmentJson, order: index, context: context) {
-                                observation.addToAttachments(attachment);
-                            }
-                        }
-                    }
-
-                    observation.createObservationLocations(context: context)
-
-                    newObservation = observation;
-                }
-            }
         }
         
         return newObservation;
@@ -831,7 +863,7 @@ enum ObservationState: Int, CustomStringConvertible {
         self.geometry = GeometryDeserializer.parseGeometry(json: json[ObservationKey.geometry.key] as? [AnyHashable : Any])
         return self;
     }
-    
+    static var storedForms: [NSNumber:Form] = [:]
     func generateProperties(propertyJson: [String : Any], eventForms: [NSNumber: [[String: AnyHashable]]]? = nil) -> [AnyHashable : Any] {
         var parsedProperties: [String : Any] = [:]
         
@@ -850,7 +882,10 @@ enum ObservationState: Int, CustomStringConvertible {
                             var formFields: [[String: AnyHashable]]? = nil
                             if let eventForms = eventForms {
                                 formFields = eventForms[formId]
+                            } else if let managedObjectContext = managedObjectContext, let fetchedForm : Form = Observation.storedForms[formId] {
+                                formFields = fetchedForm.json?.json?[FormKey.fields.key] as? [[String: AnyHashable]]
                             } else if let managedObjectContext = managedObjectContext, let fetchedForm : Form = Form.mr_findFirst(byAttribute: "formId", withValue: formId, in: managedObjectContext) {
+                                Observation.storedForms[formId] = fetchedForm
                                 formFields = fetchedForm.json?.json?[FormKey.fields.key] as? [[String: AnyHashable]]
                             }
                             
@@ -1301,7 +1336,7 @@ enum ObservationState: Int, CustomStringConvertible {
                                 observationLocation.formId = eventFormId.int64Value
                                 observationLocation.observationFormId = form[FormKey.id.key] as? String
                                 
-                                let eventForm = Form.mr_findFirst(
+                                let eventForm = Observation.storedForms[observationLocation.formId as NSNumber] ?? Form.mr_findFirst(
                                     byAttribute: "formId",
                                     withValue: observationLocation.formId,
                                     in: context
